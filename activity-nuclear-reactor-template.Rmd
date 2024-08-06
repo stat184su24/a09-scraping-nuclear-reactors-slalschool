@@ -1,22 +1,58 @@
 ---
 title: "Activity: Nuclear Reactors"
-author: "YOUR NAME HERE"
+author: "Siddharth Lal"
 output: html_notebook
 ---
-
-```{r}
-library(tidyverse)
-
-```
 
 ## Scrape the Data 
 
 ```{r}
-#My code here.... 
+library(tidyverse)
+library(rvest)
+library(lubridate)
+
+base_url <- "https://en.wikipedia.org/wiki/List_of_commercial_nuclear_reactors"
+
+page <- read_html(base_url)
+
+japan_table_xpath <- '/html/body/div[2]/div/div[3]/main/div[3]/div[3]/div[1]/table[21]'
+japan_reactors <- html_node(page, xpath = japan_table_xpath) %>%
+  html_table(fill = TRUE)
+
+china_table_xpath <- '/html/body/div[2]/div/div[3]/main/div[3]/div[3]/div[1]/table[10]'
+china_reactors <- html_node(page, xpath = china_table_xpath) %>%
+  html_table(fill = TRUE)
+
+print(colnames(japan_reactors))
+print(colnames(china_reactors))
+
+safe_mdy <- function(date) {
+  parsed_date <- mdy(date, quiet = TRUE)
+  ifelse(is.na(parsed_date), NA, parsed_date)
+}
+
+japan_cleaned <- japan_reactors %>%
+  mutate(across(c(Beginbuilding, Commercialoperation, Closed), safe_mdy))
+
+china_cleaned <- china_reactors %>%
+  mutate(across(c(Beginbuilding, Commercialoperation, Closed), safe_mdy))
+
+japan_cleaned <- japan_cleaned %>%
+  mutate(UnitNo. = as.character(UnitNo.))
+
+china_cleaned <- china_cleaned %>%
+  mutate(UnitNo. = as.character(UnitNo.))
+
+combined_data <- bind_rows(
+  mutate(japan_cleaned, country = "Japan"),
+  mutate(china_cleaned, country = "China")
+)
+
+
 
 
 ```
-
+ 
 
 ## Your turn: In what ways is the table tidy? How is it not tidy? What’s different about it from a tidy table?
 
@@ -26,7 +62,15 @@ My answer here.....
 ## Your Turn: Plot Net Generation Capacity vs Construction Date
 
 ```{r}
-#my code here 
+library(ggplot2)
+
+ggplot(combined_data, aes(x = Beginbuilding, y = 'Capacity(MW)', color = Type)) +
+  geom_point() +
+  labs(title = "Net Generation Capacity vs Construction Date",
+       x = "Construction Start Date",
+       y = "Net Capacity (MW)",
+       color = "Reactor Type") +
+  theme_minimal()
 
 
 ```
@@ -35,7 +79,15 @@ My answer here.....
 ## Your Turn: Scrape & Clean China Data (then merge with Japan)
 
 ```{r}
-#my code here... 
+library(ggplot2)
+
+ggplot(combined_data, aes(x = Beginbuilding, y = CapacityMw, color = Type)) +
+  geom_point() +
+  labs(title = "Net Generation Capacity vs Construction Date",
+       x = "Construction Start Date",
+       y = "Net Capacity (MW)",
+       color = "Reactor Type") +
+  theme_minimal()
 
 ```
 
@@ -44,6 +96,16 @@ My answer here.....
 ## Your Turn: Reconstruct Info Graphic of Japan Reactors (or other country of interest)
 
 ```{r}
-#My code here
+
+japan_data <- combined_data %>%
+  filter(country == "Japan")
+
+ggplot(japan_data, aes(x = Beginbuilding, xend = Commercialoperation, y = name, yend = name, color = Status)) +
+  geom_segment(size = 2) +
+  labs(title = "Timeline of Japan Nuclear Reactors Construction to Operation",
+       x = "Date",
+       y = "Reactor Name",
+       color = "Status") +
+  theme_minimal()
 
 ```
